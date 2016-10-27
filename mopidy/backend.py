@@ -248,6 +248,7 @@ class PlaybackProvider(object):
                 'Backend translated URI from %s to %s', track.uri, uri)
         if not uri:
             return False
+        self.audio.set_live(track.is_stream).get()
         self.audio.set_uri(uri).get()
         return True
 

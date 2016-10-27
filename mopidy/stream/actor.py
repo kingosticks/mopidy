@@ -66,7 +66,7 @@ class StreamLibraryProvider(backend.LibraryProvider):
 
         if scan_result:
             track = tags.convert_tags_to_track(scan_result.tags).replace(
-                uri=uri, length=scan_result.duration)
+                uri=uri, length=scan_result.duration, is_stream=scan_result.seekable)
         else:
             logger.warning('Problem looking up %s', uri)
             track = Track(uri=uri)

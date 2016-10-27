@@ -263,6 +263,8 @@ class Track(ValidatedImmutableObject):
     #: equivalent timestamp or simply a version counter.
     last_modified = fields.Integer(min=0)
 
+    is_stream = fields.Boolean(default=False)
+
 
 class TlTrack(ValidatedImmutableObject):
 

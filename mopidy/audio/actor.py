@@ -284,7 +284,11 @@ class _Handler(object):
             buffering_mode = structure.get_enum(
                 'buffering-mode', Gst.BufferingMode)
             if buffering_mode == Gst.BufferingMode.LIVE:
+                gst_logger.error("Is BufferingMode.LIVE - don't pause")
                 return  # Live sources stall in paused.
+    
+        if self._audio._is_live:
+            gst_logger.error("Is_Live buffering - don't pause")
 
         level = logging.getLevelName('TRACE')
         if percent < 10 and not self._audio._buffering:
@@ -413,6 +417,7 @@ class Audio(pykka.ThreadingActor):
         self._config = config
         self._target_state = Gst.State.NULL
         self._buffering = False
+        self._is_live = False
         self._tags = {}
         self._pending_uri = None
         self._pending_tags = None
@@ -547,8 +552,14 @@ class Audio(pykka.ThreadingActor):
         else:
             self._appsrc.reset()
 
+        source.set_live(self._is_live)
+        logger.error("Setting is_live %s in _on_source_setup", self._is_live)
         utils.setup_proxy(source, self._config['proxy'])
 
+    def set_live(self, is_live):
+        logger.error("Setting is_live %s", is_live)
+        self._is_live = is_live
+    
     def set_uri(self, uri):
         """
         Set URI of audio to be played.
@@ -684,6 +695,7 @@ class Audio(pykka.ThreadingActor):
 
         :rtype: :class:`True` if successfull, else :class:`False`
         """
+        gst_logger.error("Starting playback with islive=%s", self._is_live)
         return self._set_state(Gst.State.PLAYING)
 
     def pause_playback(self):
@@ -712,6 +724,7 @@ class Audio(pykka.ThreadingActor):
         :rtype: :class:`True` if successfull, else :class:`False`
         """
         self._buffering = False
+        self._is_live = False
         return self._set_state(Gst.State.NULL)
 
     def wait_for_state_change(self):

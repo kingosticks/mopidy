@@ -115,7 +115,7 @@ class LibraryController(object):
 
         return []
 
-    def get_distinct(self, field, query=None):
+    def get_distinct(self, field, query=None, groups=None):
         """
         List distinct values for a given field from the library.
 
@@ -135,13 +135,14 @@ class LibraryController(object):
         query is None or validation.check_query(query)  # TODO: normalize?
 
         result = set()
-        futures = {b: b.library.get_distinct(field, query)
+        futures = {b: b.library.get_distinct(field, query, groups)
                    for b in self.backends.with_library.values()}
         for backend, future in futures.items():
             with _backend_error_handling(backend):
                 values = future.get()
                 if values is not None:
-                    validation.check_instances(values, compat.text_type)
+                    for v in values:
+                        validation.check_instances(v, compat.text_type)
                     result.update(values)
         return result
 

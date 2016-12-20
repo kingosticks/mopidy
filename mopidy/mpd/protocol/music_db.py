@@ -43,9 +43,11 @@ _LIST_NAME_MAPPING = {
     'performer': 'Performer'}
 
 
-def _query_from_mpd_search_parameters(parameters, mapping):
+def _query_from_mpd_search_parameters(parameters, mapping, allow_group=False):
     query = {}
     parameters = list(parameters)
+    if allow_group:
+        mapping['group'] = 'group'
     while parameters:
         # TODO: does it matter that this is now case insensitive
         field = mapping.get(parameters.pop(0).lower())
@@ -56,6 +58,10 @@ def _query_from_mpd_search_parameters(parameters, mapping):
         value = parameters.pop(0)
         if value.strip():
             query.setdefault(field, []).append(value)
+    if allow_group:
+        # The group values also need mapping
+        groups = query.pop('group', [])
+        query['group'] = filter(None, [mapping.get(g.lower()) for g in groups])
     return query
 
 
@@ -273,16 +279,19 @@ def list_(context, *args):
             query = {'artist': params}
     else:
         try:
-            query = _query_from_mpd_search_parameters(params, _LIST_MAPPING)
+            query = _query_from_mpd_search_parameters(params, _LIST_MAPPING, allow_group=True)
         except exceptions.MpdArgError as e:
             e.message = 'not able to parse args'
             raise
         except ValueError:
             return
 
-    name = _LIST_NAME_MAPPING[field]
-    result = context.core.library.get_distinct(field, query)
-    return [(name, value) for value in result.get()]
+    extra_fields = query.pop('group', [])
+    result = context.core.library.get_distinct(field, query, extra_fields or None)
+
+    fields = [field] + extra_fields
+    names = [_LIST_NAME_MAPPING[f] for f in fields]
+    return [zip(names, values) for values in result.get()]
 
 
 @protocol.commands.add('listall')

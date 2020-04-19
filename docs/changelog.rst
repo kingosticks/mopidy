@@ -9,6 +9,18 @@ This changelog is used to track all major changes to Mopidy.
 For older releases, see :ref:`history`.
 
 
+v3.1.0 (UNRELEASED)
+===================
+
+- Core: Align values supported by the ``field`` argument to
+  :meth:`mopidy.core.LibraryController.get_distinct`: with Mopidy search query
+  fields, with the exception of 'any'. (Fixes: :issue:`1900`, PR: :issue:`1899`)
+
+- Core: Add ``musicbrainz_albumid``, ``musicbrainz_artistid``,
+  ``musicbrainz_trackid``, and ``disc_no`` to the permitted search query
+  fields. (Fixes: :issue:`1900`, PR: :issue:`1899`)
+
+
 v3.0.2 (2020-04-02)
 ===================
 

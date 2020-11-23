@@ -343,7 +343,7 @@ class _Handler:
 
     def on_tag(self, taglist):
         tags = tags_lib.convert_taglist(taglist)
-        gst_logger.debug("Got TAG bus message: tags=%r", dict(tags))
+        gst_logger.debug(f"Got TAG bus message: tags={tags_lib.log_repr(tags)}")
 
         # Postpone emitting tags until stream start.
         if self._audio._pending_tags is not None:

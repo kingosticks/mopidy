@@ -10,6 +10,15 @@ from mopidy.models import Album, Artist, Track
 logger = logging.getLogger(__name__)
 
 
+def log_repr(tags, num_bytes=10):
+    result = dict(tags)
+    for tagname, taglist in result.items():
+        for i, x in enumerate(taglist):
+            if type(x) is bytes:
+                result[tagname][i] = x[:num_bytes]
+    return repr(result)
+
+
 def convert_taglist(taglist):
     """Convert a :class:`Gst.TagList` to plain Python types.
 

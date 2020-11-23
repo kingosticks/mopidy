@@ -107,6 +107,58 @@ class _Appsrc:
         return True
 
 
+class HTTPOutput():
+    name = 'output-http'
+
+    def __init__(self, config):
+        self._config = config.get(self.name)
+        self._fdsink = None
+        self._encoder = "audioresample ! audio/x-raw,rate=48000"
+        self._encoder = "lamemp3enc"
+        # self._encoder = "opusenc ! webmmux streamable=true" # works
+        # self._encoder = "audioresample ! audioconvert ! audio/x-raw,rate=48000 ! opusenc hard-resync=true ! oggmux" # works
+        # self._encoder = "avenc_aac ! aacparse" # no working
+        # self._encoder = "voaacenc bitrate=32000 ! aacparse" # no working
+        # self._encoder = "avenc_opus" # wont link with either ogg or webm mux
+
+    @property
+    def description(self):
+        # self._encoder = self._config['encoder']
+        return f"{self._encoder} ! multifdsink name=fdsink"
+
+    @property
+    def content_type(self):
+        if "mp3enc" in self._encoder or "aacparse" in self._encoder:
+            return "audio/mpeg"
+        elif "ogg" in self._encoder:
+            return "audio/ogg"
+        elif "webmmux" in self._encoder:
+            return "audio/webm"
+        elif "aac" in self._encoder:
+            return "audio/aac"
+        else:
+            return "application/octet-stream"
+
+    def configure(self, new_output):
+        fdsink = new_output.get_by_name("fdsink")
+        fdsink.set_property('timeout', 10 * Gst.SECOND)
+        fdsink.set_property('sync-method', 0) # Serve starting from the latest buffer
+        fdsink.set_property('recover-policy', 1) # Resync client to latest buffer
+        fdsink.set_property('units-soft-max', 5 * Gst.SECOND) # Recover client when going over this limit
+        fdsink.set_property('units-max', 10 * Gst.SECOND) # max number of units to queue
+        fdsink.set_property('unit-format', Gst.Format.TIME)
+        self._fdsink = fdsink
+        self._client_fd_removed_id = fdsink.connect('client-fd-removed', self._on_client_removed)
+
+    def on_new_client(self, fd):
+        logger.error(f"Adding client (fd={fd})")
+        self._fdsink.emit("add", fd)
+
+    def _on_client_removed(self, sink, fd):
+        logger.error(f"Removed client (fd={fd})")
+        os.close(fd)
+
+
 # TODO: expose this as a property on audio when #790 gets further along.
 class _Outputs(Gst.Bin):
     def __init__(self):
@@ -118,6 +170,15 @@ class _Outputs(Gst.Bin):
 
         ghost_pad = Gst.GhostPad.new("sink", self._tee.get_static_pad("sink"))
         self.add_pad(ghost_pad)
+        self._by_name = {}
+
+    def add_output_ext(self, ext):
+        outbin = self.add_output(ext.description)
+        ext.configure(outbin)
+        self._by_name[ext.name] = ext
+
+    def get_output_ext(self, name):
+        return self._by_name.get(name)
 
     def add_output(self, description):
         # XXX This only works for pipelines not in use until #790 gets done.
@@ -132,7 +193,8 @@ class _Outputs(Gst.Bin):
             raise exceptions.AudioException(bytes(ex))
 
         self._add(output)
-        logger.info('Audio output set to "%s"', description)
+        logger.info('Added audio output "%s"', description)
+        return output
 
     def _add(self, element):
         queue = Gst.ElementFactory.make("queue")
@@ -506,10 +568,16 @@ class Audio(pykka.ThreadingActor):
             self._outputs = _Outputs()
             try:
                 self._outputs.add_output(self._config["audio"]["output"])
+
+                plugin = HTTPOutput(self._config)
+                self._outputs.add_output_ext(plugin)
             except exceptions.AudioException:
                 process.exit_process()  # TODO: move this up the chain
 
         self._handler.setup_event_handling(self._outputs.get_static_pad("sink"))
+
+    def get_output(self, name):
+        return self._outputs.get_output_ext(name)
 
     def _setup_audio_sink(self):
         audio_sink = Gst.ElementFactory.make("bin", "audio-sink")

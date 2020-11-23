@@ -44,6 +44,13 @@ def make_mopidy_app_factory(apps, statics):
                 },
             ),
             (
+                r"/stream",
+                StreamingAudioHandler,
+                {
+                    "core": core,
+                },
+            ),
+            (
                 r"/(.+)",
                 StaticFileHandler,
                 {"path": os.path.join(os.path.dirname(__file__), "data")},
@@ -123,12 +130,12 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     def open(self):
         self.set_nodelay(True)
         self.clients.add(self)
-        logger.debug("New WebSocket connection from %s", self.request.remote_ip)
+        logger.info("New WebSocket connection from %s", self.request.connection.context.address)
 
     def on_close(self):
         self.clients.discard(self)
-        logger.debug(
-            "Closed WebSocket connection from %s", self.request.remote_ip
+        logger.info(
+            "Closed WebSocket connection from %s", self.request.connection.stream
         )
 
     def on_message(self, message):
@@ -239,6 +246,44 @@ class JsonRpcHandler(tornado.web.RequestHandler):
 
         self.set_status(204)
         self.finish()
+
+
+class StreamingAudioHandler(tornado.web.RequestHandler):
+    def initialize(self, core):
+        self.core = core
+        self.io_loop = tornado.ioloop.IOLoop.current()
+        self.http_output = self.core.audio.get().get_output('output-http').get()
+
+    def get(self):
+        if self.http_output is None:
+            logger.error("No HTTP Output registered")
+            self.send_error()
+            return
+
+        content_type = self.http_output.content_type
+        logger.info(f"Sending 'Content-Type: {content_type}'")
+        self.set_status(200)
+        self.set_header("Content-Type", content_type)
+        self.set_header("Connection", "close")
+        self.set_header("Pragma", "no-cache")
+        self.set_header("Cache-Control", "no-cache, no-store")
+        self.set_header("Accept-Ranges", "none") # Not sure needed, range requests will only be ignored.
+        self.set_header("Transfer-Encoding", "identity") # Prevents Tornado forcing chunked mode when we flush.
+        self.flush()
+
+        # Take over control from Tornado.
+        stream = self.detach()
+        sock = stream.fileno()
+        fd = sock.fileno()
+        logger.info(f"Streaming socket {sock}'")
+        new_fd = os.dup(fd) # Tornado is using this fd so we need our own.
+        self.http_output.on_new_client(new_fd)
+
+    def on_finish(self):
+        logger.warning(f"on_finish")
+
+    def on_connection_close(self):
+        logger.warning(f"on_connection_close")
 
 
 class ClientListHandler(tornado.web.RequestHandler):

@@ -1,13 +1,6 @@
 """Mopidy documentation build configuration file"""
 
-
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.resolve()))
-sys.path.insert(0, str(Path(__file__).parent.parent.resolve()))
-
-from mopidy.internal.versioning import get_version
+from importlib.metadata import version
 
 # -- Custom Sphinx setup ------------------------------------------------------
 
@@ -41,10 +34,10 @@ source_suffix = ".rst"
 master_doc = "index"
 
 project = "Mopidy"
-copyright = "2009-2023, Stein Magnus Jodal and contributors"  # noqa: A001
+copyright = "2009-2024, Stein Magnus Jodal and contributors"  # noqa: A001
 
 
-release = get_version()
+release = version("Mopidy")
 version = ".".join(release.split(".")[:2])
 
 # To make the build reproducible, avoid using today's date in the manpages

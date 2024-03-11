@@ -8,9 +8,10 @@ from typing import TYPE_CHECKING, TypedDict, cast
 
 import pykka.debug
 
+import mopidy
 from mopidy import commands, ext
 from mopidy import config as config_lib
-from mopidy.internal import log, path, process, versioning
+from mopidy.internal import log, path, process
 from mopidy.internal.gi import (
     GLib,
     Gst,  # noqa: F401 (imported to test GStreamer presence)
@@ -39,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 def main() -> int:  # noqa: C901, PLR0912, PLR0915
     log.bootstrap_delayed_logging()
-    logger.info(f"Starting Mopidy {versioning.get_version()}")
+    logger.info(f"Starting Mopidy {mopidy.__version__}")
 
     signal.signal(signal.SIGTERM, process.sigterm_handler)
     # Windows does not have signal.SIGUSR1
@@ -110,9 +111,9 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
                 extensions_status["disabled"].append(extension)
             elif config_errors.get(extension.ext_name):
                 config[extension.ext_name]["enabled"] = False
-                config_errors[extension.ext_name][
-                    "enabled"
-                ] = "extension disabled due to config errors."
+                config_errors[extension.ext_name]["enabled"] = (
+                    "extension disabled due to config errors."
+                )
                 extensions_status["config"].append(extension)
             else:
                 extensions_status["enabled"].append(extension)

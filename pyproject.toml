@@ -5,7 +5,6 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "Mopidy"
-version = "4.0.0a1"
 description = "Mopidy is an extensible music server written in Python"
 readme = "README.rst"
 requires-python = ">= 3.11"
@@ -23,6 +22,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Multimedia :: Sound/Audio :: Players",
 ]
+dynamic = ["version"]
 dependencies = [
     "pygobject >= 3.42",
     "pykka >= 4.0",
@@ -38,7 +38,7 @@ docs = [
     "sphinx-autodoc-typehints >= 1.12",
     "sphinx-rtd-theme >= 1.2",
 ]
-lint = ["ruff == 0.2.2"]
+lint = ["ruff == 0.3.0"]
 test = ["pytest >= 7.2", "pytest-cov >= 4.0", "responses >= 0.18"]
 typing = [
     "pygobject-stubs",

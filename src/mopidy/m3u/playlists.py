@@ -147,6 +147,9 @@ class M3UPlaylistsProvider(backend.PlaylistsProvider):
         pass  # nothing to do
 
     def save(self, playlist: Playlist) -> Playlist | None:
+        if playlist.uri is None:
+            logger.debug("Playlist has no URI, cannot save")
+            return None
         path = translator.uri_to_path(playlist.uri)
         if not self._is_in_basedir(path):
             logger.debug("Ignoring path outside playlist dir: %s", playlist.uri)
@@ -176,15 +179,16 @@ class M3UPlaylistsProvider(backend.PlaylistsProvider):
         return path.is_path_inside_base_dir(local_path, self._playlists_dir)
 
     def _open(
-        self, path: Path, mode: str = "r"
+        self,
+        path: Path,
+        mode: str = "r",
     ) -> contextlib._GeneratorContextManager[IO[Any]] | IO[Any]:
         encoding = "utf-8" if path.suffix == ".m3u8" else self._default_encoding
         if not path.is_absolute():
             path = self._abspath(path)
         if not self._is_in_basedir(path):
-            raise BackendError(
-                f"Path {path!r} is not inside playlist dir {self._playlists_dir!r}"
-            )
+            msg = f"Path {path!r} is not inside playlist dir {self._playlists_dir!r}"
+            raise BackendError(msg)
         if "w" in mode:
             return replace(path, mode, encoding=encoding, errors="replace")
         return path.open(mode, encoding=encoding, errors="replace")

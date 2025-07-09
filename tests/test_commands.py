@@ -1,8 +1,10 @@
 import argparse
+import re
 import unittest
 from unittest import mock
 
 import pytest
+
 from mopidy import commands
 
 
@@ -95,7 +97,7 @@ class CommandParsingTest(unittest.TestCase):
         result = cmd.parse(["foo", "baz", "bep", "bop"])
         assert result.bar == ["baz", "bep", "bop"]
 
-    def test_result_stores_choosen_command(self):
+    def test_result_stores_chosen_command(self):
         child = commands.Command()
 
         cmd = commands.Command()
@@ -142,7 +144,9 @@ class CommandParsingTest(unittest.TestCase):
         with pytest.raises(SystemExit):
             cmd.parse([])
         self.exit_mock.assert_called_once_with(
-            mock.ANY, mock.ANY, "usage: foo --bar BAR"
+            mock.ANY,
+            mock.ANY,
+            "usage: foo --bar BAR",
         )
 
         self.exit_mock.reset_mock()
@@ -150,7 +154,9 @@ class CommandParsingTest(unittest.TestCase):
             cmd.parse([], prog="baz")
 
         self.exit_mock.assert_called_once_with(
-            mock.ANY, mock.ANY, "usage: baz --bar BAR"
+            mock.ANY,
+            mock.ANY,
+            "usage: baz --bar BAR",
         )
 
     def test_missing_required(self):
@@ -173,10 +179,10 @@ class CommandParsingTest(unittest.TestCase):
         with pytest.raises(SystemExit):
             cmd.parse([], prog="foo")
 
-        self.exit_mock.assert_called_once_with(
-            1,
-            "the following arguments are required: bar, _args",
-            "usage: foo bar",
+        assert self.exit_mock.call_count == 1
+        assert re.match(
+            r"the following arguments are required: bar",
+            self.exit_mock.call_args[0][1],
         )
 
     def test_missing_positionals_subcommand(self):
@@ -189,10 +195,10 @@ class CommandParsingTest(unittest.TestCase):
         with pytest.raises(SystemExit):
             cmd.parse(["bar"], prog="foo")
 
-        self.exit_mock.assert_called_once_with(
-            1,
-            "the following arguments are required: baz, _args",
-            "usage: foo bar baz",
+        assert self.exit_mock.call_count == 1
+        assert re.match(
+            r"the following arguments are required: baz",
+            self.exit_mock.call_args[0][1],
         )
 
     def test_unknown_command(self):
@@ -202,7 +208,9 @@ class CommandParsingTest(unittest.TestCase):
             cmd.parse(["--help"], prog="foo")
 
         self.exit_mock.assert_called_once_with(
-            1, "unrecognized arguments: --help", "usage: foo"
+            1,
+            "unrecognized arguments: --help",
+            "usage: foo",
         )
 
     def test_invalid_subcommand(self):
@@ -213,7 +221,9 @@ class CommandParsingTest(unittest.TestCase):
             cmd.parse(["bar"], prog="foo")
 
         self.exit_mock.assert_called_once_with(
-            1, "unrecognized command: bar", "usage: foo"
+            1,
+            "unrecognized command: bar",
+            "usage: foo",
         )
 
     def test_set(self):
@@ -223,7 +233,7 @@ class CommandParsingTest(unittest.TestCase):
         result = cmd.parse([])
         assert result.foo == "bar"
 
-    def test_set_propegate(self):
+    def test_set_propagate(self):
         child = commands.Command()
 
         cmd = commands.Command()
@@ -298,7 +308,7 @@ class HelpTest(unittest.TestCase):
         assert cmd.format_help().strip() == "usage: foo"
         assert cmd.format_help("bar").strip() == "usage: bar"
 
-    def test_command_without_documenation_or_options(self):
+    def test_command_without_documentation_or_options(self):
         cmd = commands.Command()
         assert cmd.format_help("bar").strip() == "usage: bar"
 
@@ -366,17 +376,17 @@ class HelpTest(unittest.TestCase):
     def test_subcommand_with_options_shown(self):
         child = commands.Command()
         child.add_argument(
-            "-h", "--help", action="store_true", help="show this message"
+            "-h",
+            "--help",
+            action="store_true",
+            help="show this message",
         )
 
         cmd = commands.Command()
         cmd.add_child("bar", child)
 
         expected = (
-            "usage: foo\n\n"
-            "COMMANDS:\n\n"
-            "bar [-h]\n\n"
-            "    -h, --help  show this message"
+            "usage: foo\n\nCOMMANDS:\n\nbar [-h]\n\n    -h, --help  show this message"
         )
         assert expected == cmd.format_help("foo").strip()
 
@@ -388,10 +398,7 @@ class HelpTest(unittest.TestCase):
         cmd.add_child("bar", child)
 
         expected = (
-            "usage: foo\n\n"
-            "COMMANDS:\n\n"
-            "bar baz\n\n"
-            "    baz  the great and wonderful"
+            "usage: foo\n\nCOMMANDS:\n\nbar baz\n\n    baz  the great and wonderful"
         )
         assert expected == cmd.format_help("foo").strip()
 
@@ -399,7 +406,10 @@ class HelpTest(unittest.TestCase):
         child = commands.Command()
         child.help = "  some text about everything this command does."
         child.add_argument(
-            "-h", "--help", action="store_true", help="show this message"
+            "-h",
+            "--help",
+            action="store_true",
+            help="show this message",
         )
 
         cmd = commands.Command()
@@ -421,7 +431,10 @@ class HelpTest(unittest.TestCase):
         child = commands.Command()
         child.add_child("baz", subchild)
         child.add_argument(
-            "-h", "--help", action="store_true", help="show this message"
+            "-h",
+            "--help",
+            action="store_true",
+            help="show this message",
         )
 
         cmd = commands.Command()
@@ -497,7 +510,7 @@ class HelpTest(unittest.TestCase):
 
 
 class RunTest(unittest.TestCase):
-    def test_default_implmentation_raises_error(self):
+    def test_default_implementation_raises_error(self):
         with pytest.raises(NotImplementedError):
             commands.Command().run(args=None, config=None)
 

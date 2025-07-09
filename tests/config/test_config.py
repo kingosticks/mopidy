@@ -2,25 +2,24 @@ import unittest
 from unittest import mock
 
 from mopidy import config, ext
-
 from tests import path_to_data_dir
 
 
 class LoadConfigTest(unittest.TestCase):
     def test_load_nothing(self):
-        assert {} == config._load([], [], [])
+        assert config._load([], [], []) == {}
 
     def test_load_missing_file(self):
         file0 = path_to_data_dir("file0.conf")
         result = config._load([file0], [], [])
-        assert {} == result
+        assert result == {}
 
     @mock.patch("os.access")
     def test_load_nonreadable_file(self, access_mock):
         access_mock.return_value = False
         file1 = path_to_data_dir("file1.conf")
         result = config._load([file1], [], [])
-        assert {} == result
+        assert result == {}
 
     def test_load_single_default(self):
         default = b"[foo]\nbar = baz"
@@ -103,33 +102,33 @@ class ValidateTest(unittest.TestCase):
 
     def test_empty_config_no_schemas(self):
         conf, errors = config._validate({}, [])
-        assert {} == conf
-        assert {} == errors
+        assert conf == {}
+        assert errors == {}
 
     def test_config_no_schemas(self):
         raw_config = {"foo": {"bar": "baz"}}
         conf, errors = config._validate(raw_config, [])
-        assert {} == conf
-        assert {} == errors
+        assert conf == {}
+        assert errors == {}
 
     def test_empty_config_single_schema(self):
         conf, errors = config._validate({}, [self.schema])
-        assert {"foo": {"bar": None}} == conf
-        assert {"foo": {"bar": "config key not found."}} == errors
+        assert conf == {"foo": {"bar": None}}
+        assert errors == {"foo": {"bar": "config key not found."}}
 
     def test_config_single_schema(self):
         raw_config = {"foo": {"bar": "baz"}}
         conf, errors = config._validate(raw_config, [self.schema])
-        assert {"foo": {"bar": "baz"}} == conf
-        assert {} == errors
+        assert conf == {"foo": {"bar": "baz"}}
+        assert errors == {}
 
     def test_config_single_schema_config_error(self):
         raw_config = {"foo": {"bar": "baz"}}
         self.schema["bar"] = mock.Mock()
         self.schema["bar"].deserialize.side_effect = ValueError("bad")
         conf, errors = config._validate(raw_config, [self.schema])
-        assert {"foo": {"bar": None}} == conf
-        assert {"foo": {"bar": "bad"}} == errors
+        assert conf == {"foo": {"bar": None}}
+        assert errors == {"foo": {"bar": "bad"}}
 
     # TODO: add more tests
 
@@ -186,8 +185,7 @@ class PreProcessorTest(unittest.TestCase):
     def test_initial_comment_inline_handling(self):
         result = config._preprocess("; foo ; bar ; baz")
         assert result == (
-            "[__COMMENTS__]\n__SEMICOLON0__ = foo\n"
-            "__INLINE1__ = bar\n__INLINE2__ = baz"
+            "[__COMMENTS__]\n__SEMICOLON0__ = foo\n__INLINE1__ = bar\n__INLINE2__ = baz"
         )
 
     def test_inline_semicolon_comment(self):
@@ -234,7 +232,7 @@ class PostProcessorTest(unittest.TestCase):
         assert result == "# foobar"
 
         result = config._postprocess(
-            "[__COMMENTS__]\n__SEMICOLON0__ = foo\n__HASH1__ = bar"
+            "[__COMMENTS__]\n__SEMICOLON0__ = foo\n__HASH1__ = bar",
         )
         assert result == "; foo\n# bar"
 
@@ -243,13 +241,13 @@ class PostProcessorTest(unittest.TestCase):
             "[__COMMENTS__]\n"
             "__SEMICOLON0__ = foo\n"
             "__INLINE1__ = bar\n"
-            "__INLINE2__ = baz"
+            "__INLINE2__ = baz",
         )
         assert result == "; foo ; bar ; baz"
 
     def test_inline_semicolon_comment(self):
         result = config._postprocess(
-            "[__COMMENTS__]\n[section]\nfoo = bar\n__INLINE0__ = baz"
+            "[__COMMENTS__]\n[section]\nfoo = bar\n__INLINE0__ = baz",
         )
         assert result == "[section]\nfoo = bar ; baz"
 
@@ -263,10 +261,7 @@ class PostProcessorTest(unittest.TestCase):
 
     def test_section_extra_text_inline_semicolon(self):
         result = config._postprocess(
-            "[__COMMENTS__]\n"
-            "[section]\n"
-            "__SECTION0__ = foobar\n"
-            "__INLINE1__ = baz"
+            "[__COMMENTS__]\n[section]\n__SECTION0__ = foobar\n__INLINE1__ = baz",
         )
         assert result == "[section] foobar ; baz"
 

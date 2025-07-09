@@ -36,7 +36,6 @@ class Backend:
     This will make Mopidy print the error message and exit so that the user can
     fix the issue.
 
-    :param config: the entire Mopidy configuration
     :param audio: actor proxy for the audio subsystem
     """
 
@@ -116,7 +115,9 @@ class LibraryProvider:
         return []
 
     def get_distinct(
-        self, field: DistinctField, query: Query[SearchField] | None = None
+        self,
+        field: DistinctField,
+        query: Query[SearchField] | None = None,
     ) -> set[str]:
         """See :meth:`mopidy.core.LibraryController.get_distinct`.
 
@@ -282,10 +283,12 @@ class PlaybackProvider:
 
         :param track: the track to play
         """
+        if track.uri is None:
+            return False
         uri = self.translate_uri(track.uri)
         if uri != track.uri:
             logger.debug("Backend translated URI from %s to %s", track.uri, uri)
-        if not uri:
+        if uri is None:
             return False
         self.audio.set_source_setup_callback(self.on_source_setup).get()
         self.audio.set_uri(

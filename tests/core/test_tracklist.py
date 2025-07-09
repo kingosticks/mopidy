@@ -2,6 +2,7 @@ import unittest
 from unittest import mock
 
 import pytest
+
 from mopidy import backend, core
 from mopidy.internal.models import TracklistState
 from mopidy.models import TlTrack, Track
@@ -55,7 +56,7 @@ class TracklistTest(unittest.TestCase):
                 "dummy1:a",
                 "dummy1:b",
                 "dummy1:c",
-            ]
+            ],
         )
 
         assert len(tl_tracks) == 3
@@ -102,7 +103,7 @@ class TracklistTest(unittest.TestCase):
         with pytest.raises(ValueError):
             self.core.tracklist.filter({"uri": "a"})
 
-    # TODO Extract tracklist tests from the local backend tests
+    # TODO: Extract tracklist tests from the local backend tests
 
 
 class TracklistIndexTest(unittest.TestCase):
@@ -132,7 +133,7 @@ class TracklistIndexTest(unittest.TestCase):
         assert self.core.tracklist.index(self.tl_tracks[2]) == 2
 
     def test_index_returns_none_if_item_not_found(self):
-        tl_track = TlTrack(0, Track())
+        tl_track = TlTrack(1, Track())
         assert self.core.tracklist.index(tl_track) is None
 
     def test_index_returns_none_if_called_with_none(self):
@@ -203,16 +204,14 @@ class TracklistSaveLoadStateTest(unittest.TestCase):
         consume = True
         next_tlid = len(tl_tracks) + 1
         self.core.tracklist.set_consume(consume)
-        target = TracklistState(
+        assert self.core.tracklist._save_state() == TracklistState(
             consume=consume,
             repeat=False,
             single=False,
             random=False,
             next_tlid=next_tlid,
-            tl_tracks=tl_tracks,
+            tl_tracks=tuple(tl_tracks),
         )
-        value = self.core.tracklist._save_state()
-        assert target == value
 
     def test_load(self):
         old_version = self.core.tracklist.get_version()
@@ -258,7 +257,7 @@ class TracklistSaveLoadStateTest(unittest.TestCase):
         assert self.core.tracklist.get_random() is False
         assert self.core.tracklist._next_tlid == 1
         assert self.core.tracklist.get_length() == 0
-        assert [] == self.core.tracklist.get_tl_tracks()
+        assert self.core.tracklist.get_tl_tracks() == []
         assert self.core.tracklist.get_version() == old_version
 
     def test_load_tracklist_only(self):

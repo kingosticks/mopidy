@@ -59,7 +59,8 @@ class Extension:
 
         :returns: str
         """
-        raise NotImplementedError('Add at least a config section with "enabled = true"')
+        msg = 'Add at least a config section with "enabled = true"'
+        raise NotImplementedError(msg)
 
     def get_config_schema(self) -> ConfigSchema:
         """The extension's config validation schema.
@@ -74,7 +75,8 @@ class Extension:
     def check_attr(cls) -> None:
         """Check if ext_name exist."""
         if not hasattr(cls, "ext_name") or cls.ext_name is None:
-            raise AttributeError(f"{cls} not an extension or ext_name missing!")
+            msg = f"{cls} not an extension or ext_name missing!"
+            raise AttributeError(msg)
 
     @classmethod
     def get_cache_dir(cls, config: Config) -> Path:
@@ -255,7 +257,7 @@ def load_extensions() -> list[ExtensionData]:
 def validate_extension_data(data: ExtensionData) -> bool:  # noqa: PLR0911
     """Verify extension's dependencies and environment.
 
-    :param extensions: an extension to check
+    :param data: an extension to check
     :returns: if extension should be run
     """
     logger.debug("Validating extension: %s", data.extension.ext_name)

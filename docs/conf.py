@@ -1,5 +1,6 @@
 """Mopidy documentation build configuration file"""
 
+import os
 from importlib.metadata import version
 
 # -- Custom Sphinx setup ------------------------------------------------------
@@ -29,19 +30,15 @@ extensions = [
     "sphinx_rtd_theme",
 ]
 
-templates_path = ["_templates"]
-source_suffix = ".rst"
-master_doc = "index"
-
 project = "Mopidy"
-copyright = "2009-2024, Stein Magnus Jodal and contributors"  # noqa: A001
+copyright = "2009-2025, Stein Magnus Jodal and contributors"  # noqa: A001
 
 
 release = version("Mopidy")
 version = ".".join(release.split(".")[:2])
 
 # To make the build reproducible, avoid using today's date in the manpages
-today = "2021"
+today = "2025"
 
 exclude_trees = ["_build"]
 
@@ -61,6 +58,9 @@ html_split_index = False
 html_show_sourcelink = True
 
 htmlhelp_basename = "Mopidy"
+
+# Set canonical URL from the Read the Docs Domain
+html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "")
 
 
 # -- Options for LaTeX output -------------------------------------------------
@@ -116,7 +116,7 @@ extlinks = {
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
-    "pykka": ("https://pykka.readthedocs.io/en/latest/", None),
+    "pykka": ("https://pykka.readthedocs.io/stable/", None),
     "tornado": ("https://www.tornadoweb.org/en/stable/", None),
 }
 

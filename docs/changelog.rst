@@ -18,14 +18,19 @@ old versions of our dependencies and a number of deprecated APIs.
 Dependencies
 ------------
 
-- Python >= 3.11 is now required. Python 3.7-3.10 are no longer supported.
+- Python >= 3.11 is now required.
+  Support for 3.7-3.10 have been dropped,
+  while Python 3.13 has been included in the testing matrix.
 
 - GStreamer >= 1.22.0 is now required.
 
 - PyGObject >= 3.42 is now an explicit Python dependency, and not something we
   assume you'll install together with GStreamer.
 
-- Pykka >= 4.0 is now required.
+- Pykka >= 4.1 is now required.
+
+- Pydantic >= 2.9 is now required. This is a new dependency for Mopidy to
+  replace our custom data models.
 
 - Requests >= 2.28 is now required.
 
@@ -49,7 +54,7 @@ pass a lot less data over the network when using tracklist IDs in API calls.
 Root object
 ^^^^^^^^^^^
 
-- The :class:`mopidy.core.Core` class now requires the `config` argument to be
+- The :class:`mopidy.core.Core` class now requires the ``config`` argument to be
   present. As this argument is provided by Mopidy itself at runtime, this
   should only affect the setup of extension's test suites.
 
@@ -95,7 +100,28 @@ Models
 
 Changes to the data models may affect any Mopidy extension or client.
 
-- No changes so far.
+- The models are now based on Pydantic data classes, which means:
+
+  - All models fields and the ``replace()`` method should work as before, so
+    unless your extension modifies or adds models, this should not affect you.
+
+  - Models are now type-checked at runtime. This should help catch bugs early.
+
+- Since we now use Pydantic to convert data models to and from JSON, the old
+  model machinery has been removed. This includes the following:
+
+  - :class:`mopidy.models.ImmutableObject` -- Not used by Mopidy since v1.0.5 nine
+    years ago.
+  - :class:`mopidy.models.ValidatedImmutableObject` -- The old base class for all models.
+  - :class:`mopidy.models.ModelJSONEncoder`
+  - :func:`mopidy.models.model_json_decoder`
+  - :class:`mopidy.models.fields.Collection`
+  - :class:`mopidy.models.fields.Date`
+  - :class:`mopidy.models.fields.Field`
+  - :class:`mopidy.models.fields.Identifier`
+  - :class:`mopidy.models.fields.Integer`
+  - :class:`mopidy.models.fields.String`
+  - :class:`mopidy.models.fields.URI`
 
 Audio API
 ---------

@@ -1,10 +1,5 @@
-[build-system]
-requires = ["setuptools >= 66", "setuptools-scm >= 7.1"]
-build-backend = "setuptools.build_meta"
-
-
 [project]
-name = "Mopidy"
+name = "mopidy"
 description = "Mopidy is an extensible music server written in Python"
 readme = "README.rst"
 requires-python = ">= 3.11"
@@ -15,38 +10,18 @@ classifiers = [
     "Environment :: No Input/Output (Daemon)",
     "Intended Audience :: End Users/Desktop",
     "License :: OSI Approved :: Apache Software License",
-    "Operating System :: MacOS :: MacOS X",
-    "Operating System :: POSIX :: Linux",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
     "Topic :: Multimedia :: Sound/Audio :: Players",
 ]
 dynamic = ["version"]
 dependencies = [
-    "pygobject >= 3.42",
-    "pykka >= 4.0",
+    "pydantic >= 2.9",
+    "pygobject >= 3.42, <= 3.50.0",
+    "pykka >= 4.1",
     "requests >= 2.28",
     "setuptools >= 66",
     "tornado >= 6.2",
 ]
-
-[project.optional-dependencies]
-docs = [
-    "pygraphviz >= 0.20",
-    "sphinx >= 5.3",
-    "sphinx-autodoc-typehints >= 1.12",
-    "sphinx-rtd-theme >= 1.2",
-]
-lint = ["ruff == 0.3.0"]
-test = ["pytest >= 7.2", "pytest-cov >= 4.0", "responses >= 0.18"]
-typing = [
-    "pygobject-stubs",
-    "pyright == 1.1.350",
-    "types-requests",
-    "types-setuptools",
-]
-dev = ["mopidy[docs,lint,test,typing]", "tox"]
 
 [project.urls]
 Homepage = "https://mopidy.com/"
@@ -66,6 +41,50 @@ m3u = "mopidy.m3u:Extension"
 softwaremixer = "mopidy.softwaremixer:Extension"
 stream = "mopidy.stream:Extension"
 
+
+[build-system]
+requires = ["setuptools >= 66", "setuptools-scm >= 7.1"]
+build-backend = "setuptools.build_meta"
+
+
+[dependency-groups]
+dev = [
+    "tox >= 4.21",
+    { include-group = "docs" },
+    { include-group = "ruff" },
+    { include-group = "tests" },
+    { include-group = "typing" },
+]
+docs = [
+    "pygraphviz >= 0.20",
+    "sphinx >= 5.3",
+    "sphinx-autodoc-typehints >= 1.12",
+    "sphinx-rtd-theme >= 1.2",
+]
+ruff = ["ruff == 0.11.0"]
+tests = [
+    "pytest >= 7.2",
+    "pytest-cov >= 4.0",
+    "pytest-mock >= 3.8",
+    "responses >= 0.18",
+]
+typing = [
+    "pygobject-stubs >= 2.12.0",
+    "pyright == 1.1.394",
+    "types-requests >= 2.28",
+    "types-setuptools >= 66",
+]
+
+
+[tool.coverage.paths]
+source = ["src/", "*/site-packages/"]
+
+[tool.coverage.run]
+source_pkgs = ["mopidy"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_also = ['if TYPE_CHECKING:', 'raise NotImplementedError']
 
 [tool.pyright]
 pythonVersion = "3.11"
@@ -91,50 +110,12 @@ filterwarnings = [
 target-version = "py311"
 
 [tool.ruff.lint]
-select = [
-    "A",   # flake8-builtins
-    "ANN", # flake8-annotations
-    "ARG", # flake8-unused-arguments
-    "B",   # flake8-bugbear
-    "C4",  # flake8-comprehensions
-    "C90", # mccabe
-    "D",   # pydocstyle
-    "DTZ", # flake8-datetimez
-    "E",   # pycodestyle
-    "ERA", # eradicate
-    "F",   # pyflakes
-    "FBT", # flake8-boolean-trap
-    "I",   # isort
-    "INP", # flake8-no-pep420
-    "ISC", # flake8-implicit-str-concat
-    "N",   # pep8-naming
-    "PGH", # pygrep-hooks
-    "PIE", # flake8-pie
-    "PLC", # pylint convention
-    "PLE", # pylint error
-    "PLR", # pylint refactor
-    "PLW", # pylint warning
-    "PT",  # flake8-pytest-style
-    "PTH", # flake8-use-pathlib
-    "Q",   # flake8-quotes
-    "RET", # flake8-return
-    "RSE", # flake8-raise
-    "RUF", # ruff
-    "SIM", # flake8-simplify
-    "SLF", # flake8-self
-    "T20", # flake8-print
-    "TCH", # flake8-type-checking
-    "TID", # flake8-tidy-imports
-    "TRY", # tryceratops
-    "UP",  # pyupgrade
-    "W",   # pycodestyle
-]
+select = ["ALL"]
 ignore = [
     "A002",    # builtin-argument-shadowing  # TODO
     "A003",    # builtin-attribute-shadowing
+    "A005",    # stdlib-module-shadowing
     "ANN",     # flake8-annotations  # TODO
-    "ANN101",  # missing-type-self
-    "ANN102",  # missing-type-cls
     "ANN401",  # any-type
     "D100",    # undocumented-public-module  # TODO
     "D101",    # undocumented-public-class  # TODO
@@ -150,14 +131,26 @@ ignore = [
     "FBT001",  # boolean-positional-arg-in-function-definition  # TODO
     "FBT002",  # boolean-default-value-in-function-definition  # TODO
     "FBT003",  # boolean-positional-value-in-function-call  # TODO
-    "ISC001",  # single-line-implicit-string-concatenation
+    "FIX002",  # line-contains-todo
+    "FIX003",  # line-contains-fixme
+    "FIX004",  # line-contains-hack
+    "G004",    # logging-f-string
     "PLR2004", # magic-value-comparison
     "PLW2901", # redefined-loop-name
     "RET504",  # unnecessary-assign
+    "S101",    # assert  # TODO
+    "S314",    # suspicious-xml-element-tree-usage -- ElementTree is safe given expat >= 2.6.1
     "SLF001",  # private-member-access  # TODO
-    "TCH003",  # typing-only-standard-library-import
+    "TD002",   # missing-todo-author
+    "TD003",   # missing-todo-link
+    "TC003",   # typing-only-standard-library-import
+    "TC006",   # runtime-cast-value
     "TRY003",  # raise-vanilla-args
     "TRY400",  # error-instead-of-exception
+    #
+    # Conflicting with `ruff format`
+    "COM812", # missing-trailing-comma
+    "ISC001", # single-line-implicit-string-concatenation
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -177,9 +170,59 @@ ignore = [
     "PT007",   # pytest-parametrize-values-wrong-type  # TODO
     "PT009",   # pytest-unittest-assertion  # TODO
     "PT011",   # pytest-raises-too-broad  # TODO
+    "S101",    # assert
+    "S108",    # hardcoded-temp-file
     "SLF001",  # private-member-access
     "TRY002",  # raise-vanilla-class
 ]
 
 
+[tool.setuptools.package-data]
+"*" = ["*.conf"]
+"mopidy.http.data" = ["*"]
+
+
 [tool.setuptools_scm]
+
+
+[tool.tox]
+env_list = [
+    "3.11",
+    "3.12",
+    "3.13",
+    "pyright",
+    "ruff-check",
+    "ruff-format",
+    "docs",
+]
+
+[tool.tox.env_run_base]
+package = "wheel"
+wheel_build_env = ".pkg"
+dependency_groups = ["tests"]
+commands = [
+    [
+        "pytest",
+        "--cov",
+        "--basetemp={envtmpdir}",
+        { replace = "posargs", extend = true },
+    ],
+]
+
+[tool.tox.env.pyright]
+dependency_groups = ["typing"]
+commands = [["pyright", "{posargs:src}"]]
+
+[tool.tox.env.ruff-check]
+skip_install = true
+dependency_groups = ["ruff"]
+commands = [["ruff", "check", "{posargs:.}"]]
+
+[tool.tox.env.ruff-format]
+skip_install = true
+dependency_groups = ["ruff"]
+commands = [["ruff", "format", "--check", "--diff", "{posargs:.}"]]
+
+[tool.tox.env.docs]
+dependency_groups = ["docs"]
+commands = [["sphinx-build", "docs", "{envtmpdir}"]]

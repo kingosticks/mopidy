@@ -2,6 +2,7 @@ import io
 import pathlib
 
 import pytest
+
 from mopidy.m3u import translator
 from mopidy.m3u.translator import path_to_uri
 from mopidy.models import Playlist, Ref, Track
@@ -25,7 +26,7 @@ def dumps(items):
         ("./test.m3u", None, "m3u:test.m3u"),
         ("foo/../test.m3u", None, "m3u:test.m3u"),
         ("Test Playlist.m3u", None, "m3u:Test%20Playlist.m3u"),
-        ("test.mp3", "file", "file:///test.mp3"),
+        ("/test.mp3", "file", "file:///test.mp3"),
     ],
 )
 def test_path_to_uri(path, scheme, expected):
@@ -110,12 +111,14 @@ def test_load_items(contents, basedir, expected):
     if expected is not None:
         assert [Ref.track(uri=expected[0], name=expected[1])] == result
     else:
-        assert [] == result
+        assert result == []
 
 
 def test_dump_items():
     assert dumps([]) == ""
-    assert dumps([Ref.track(uri="file:///test.mp3")]) == ("file:///test.mp3\n")
+    assert dumps([Ref.track(uri="file:///test.mp3", name=None)]) == (
+        "file:///test.mp3\n"
+    )
     assert dumps([Ref.track(uri="file:///test.mp3", name="test")]) == (
         "#EXTM3U\n#EXTINF:-1,test\nfile:///test.mp3\n"
     )
@@ -136,9 +139,13 @@ def test_playlist():
     path = pathlib.Path("test.m3u")
 
     assert playlist(path) == Playlist(uri="m3u:test.m3u", name="test")
-    assert playlist(path, [Ref(uri="file:///test.mp3")], 1) == Playlist(
+    assert playlist(
+        path,
+        [Ref.track(uri="file:///test.mp3", name="test")],
+        1,
+    ) == Playlist(
         uri="m3u:test.m3u",
         name="test",
-        tracks=[Track(uri="file:///test.mp3")],
+        tracks=(Track(uri="file:///test.mp3", name="test"),),
         last_modified=1000,
     )

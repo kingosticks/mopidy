@@ -1,9 +1,8 @@
-import collections
 import logging
 import time
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, NamedTuple, cast
 
 from mopidy import exceptions
 from mopidy.audio import tags as tags_lib
@@ -26,9 +25,14 @@ class GstAutoplugSelectResult(IntEnum):
     SKIP = 2
 
 
-_Result = collections.namedtuple(
-    "_Result", ("uri", "tags", "duration", "seekable", "mime", "playable")
-)
+class _Result(NamedTuple):
+    uri: str
+    tags: dict[str, Any]
+    duration: int | None
+    seekable: bool
+    mime: str | None
+    playable: bool
+
 
 logger = logging.getLogger(__name__)
 
@@ -43,14 +47,21 @@ class Scanner:
 
     :param timeout: timeout for scanning a URI in ms
     :param proxy_config: dictionary containing proxy config strings.
-    :type event: int
     """
 
-    def __init__(self, timeout=1000, proxy_config=None):
+    def __init__(
+        self,
+        timeout: int = 1000,
+        proxy_config: dict[str, Any] | None = None,
+    ) -> None:
         self._timeout_ms = int(timeout)
         self._proxy_config = proxy_config or {}
 
-    def scan(self, uri, timeout=None):
+    def scan(
+        self,
+        uri: str,
+        timeout: float | None = None,
+    ) -> _Result:
         """Scan the given uri collecting relevant metadata.
 
         :param uri: URI of the resource to scan.
@@ -66,19 +77,17 @@ class Scanner:
             indicating if a seek would succeed.
         """
         timeout = int(timeout or self._timeout_ms)
-        tags, duration, seekable, mime = None, None, None, None
         pipeline, signals = _setup_pipeline(uri, self._proxy_config)
 
         try:
             _start_pipeline(pipeline)
             tags, mime, have_audio, duration = _process(pipeline, timeout)
             seekable = _query_seekable(pipeline)
+            return _Result(uri, tags, duration, seekable, mime, have_audio)
         finally:
             signals.clear()
             pipeline.set_state(Gst.State.NULL)
             del pipeline
-
-        return _Result(uri, tags, duration, seekable, mime, have_audio)
 
 
 # Turns out it's _much_ faster to just create a new pipeline for every as
@@ -86,7 +95,8 @@ class Scanner:
 def _setup_pipeline(uri: str, proxy_config=None) -> tuple[Gst.Pipeline, utils.Signals]:
     src = Gst.Element.make_from_uri(Gst.URIType.SRC, uri)
     if not src:
-        raise exceptions.ScannerError(f"GStreamer can not open: {uri}")
+        msg = f"GStreamer can not open: {uri}"
+        raise exceptions.ScannerError(msg)
 
     if proxy_config:
         utils.setup_proxy(src, proxy_config)
@@ -95,7 +105,8 @@ def _setup_pipeline(uri: str, proxy_config=None) -> tuple[Gst.Pipeline, utils.Si
 
     pipeline = Gst.ElementFactory.make("pipeline")
     if pipeline is None:
-        raise exceptions.AudioException("Failed to create GStreamer pipeline element.")
+        msg = "Failed to create GStreamer pipeline element."
+        raise exceptions.AudioException(msg)
     pipeline = cast(Gst.Pipeline, pipeline)
     pipeline.add(src)
 
@@ -104,18 +115,19 @@ def _setup_pipeline(uri: str, proxy_config=None) -> tuple[Gst.Pipeline, utils.Si
     elif _has_dynamic_src_pad(src):
         signals.connect(src, "pad-added", _setup_decodebin, pipeline, signals)
     else:
-        raise exceptions.ScannerError("No pads found in source element.")
+        msg = "No pads found in source element."
+        raise exceptions.ScannerError(msg)
 
     return pipeline, signals
 
 
-def _has_src_pads(element):
+def _has_src_pads(element) -> bool:
     pads = []
     element.iterate_src_pads().foreach(pads.append)
     return bool(pads)
 
 
-def _has_dynamic_src_pad(element):
+def _has_dynamic_src_pad(element) -> bool:
     for template in element.get_pad_template_list():
         if (
             template.direction == Gst.PadDirection.SRC
@@ -125,18 +137,20 @@ def _has_dynamic_src_pad(element):
     return False
 
 
-def _setup_decodebin(element, pad, pipeline, signals):
+def _setup_decodebin(element, pad, pipeline, signals) -> None:  # noqa: ARG001
     typefind = Gst.ElementFactory.make("typefind")
     if typefind is None:
-        raise exceptions.AudioException("Failed to create GStreamer typefind element.")
+        msg = "Failed to create GStreamer typefind element."
+        raise exceptions.AudioException(msg)
 
     decodebin = Gst.ElementFactory.make("decodebin")
     if decodebin is None:
-        raise exceptions.AudioException("Failed to create GStreamer decodebin element.")
+        msg = "Failed to create GStreamer decodebin element."
+        raise exceptions.AudioException(msg)
 
-    for element in (typefind, decodebin):
-        pipeline.add(element)
-        element.sync_state_with_parent()
+    for el in (typefind, decodebin):
+        pipeline.add(el)
+        el.sync_state_with_parent()
 
     pad.link(typefind.get_static_pad("sink"))
     typefind.link(decodebin)
@@ -158,11 +172,13 @@ def _have_type(
 
     element_bus = element.get_bus()
     if element_bus is None:
-        raise exceptions.AudioException("Failed to get bus of GStreamer element.")
+        msg = "Failed to get bus of GStreamer element."
+        raise exceptions.AudioException(msg)
 
     message = Gst.Message.new_application(element, struct)
     if message is None:
-        raise exceptions.AudioException("Failed to create GStreamer message.")
+        msg = "Failed to create GStreamer message."
+        raise exceptions.AudioException(msg)
 
     element_bus.post(message)
 
@@ -174,7 +190,8 @@ def _pad_added(
 ) -> None:
     fakesink = Gst.ElementFactory.make("fakesink")
     if fakesink is None:
-        raise exceptions.AudioException("Failed to create GStreamer fakesink element.")
+        msg = "Failed to create GStreamer fakesink element."
+        raise exceptions.AudioException(msg)
 
     fakesink.set_property("sync", False)
 
@@ -182,7 +199,8 @@ def _pad_added(
     fakesink.sync_state_with_parent()
     fakesink_sink = fakesink.get_static_pad("sink")
     if fakesink_sink is None:
-        raise exceptions.AudioException("Failed to get sink pad of GStreamer fakesink.")
+        msg = "Failed to get sink pad of GStreamer fakesink."
+        raise exceptions.AudioException(msg)
     pad.link(fakesink_sink)
 
     raw_caps = Gst.Caps.from_string("audio/x-raw")
@@ -195,11 +213,13 @@ def _pad_added(
 
         element_bus = element.get_bus()
         if element_bus is None:
-            raise exceptions.AudioException("Failed to get bus of GStreamer element.")
+            msg = "Failed to get bus of GStreamer element."
+            raise exceptions.AudioException(msg)
 
         message = Gst.Message.new_application(element, struct)
         if message is None:
-            raise exceptions.AudioException("Failed to create GStreamer message.")
+            msg = "Failed to create GStreamer message."
+            raise exceptions.AudioException(msg)
 
         element_bus.post(message)
 
@@ -211,24 +231,26 @@ def _autoplug_select(
     factory: Gst.ElementFactory,
 ) -> GstAutoplugSelectResult:
     if factory.list_is_type(
-        GstElementFactoryListType.DECODER | GstElementFactoryListType.AUDIO
+        GstElementFactoryListType.DECODER | GstElementFactoryListType.AUDIO,
     ):
         struct = Gst.Structure.new_empty("have-audio")
 
         element_bus = element.get_bus()
         if element_bus is None:
-            raise exceptions.AudioException("Failed to get bus of GStreamer element.")
+            msg = "Failed to get bus of GStreamer element."
+            raise exceptions.AudioException(msg)
 
         message = Gst.Message.new_application(element, struct)
         if message is None:
-            raise exceptions.AudioException("Failed to create GStreamer message.")
+            msg = "Failed to create GStreamer message."
+            raise exceptions.AudioException(msg)
 
         element_bus.post(message)
 
     if not factory.list_is_type(
         GstElementFactoryListType.DEMUXER
         | GstElementFactoryListType.DEPAYLOADER
-        | GstElementFactoryListType.PARSER
+        | GstElementFactoryListType.PARSER,
     ):
         return GstAutoplugSelectResult.EXPOSE
     return GstAutoplugSelectResult.TRY
@@ -355,7 +377,8 @@ def _process(  # noqa: C901, PLR0911, PLR0912, PLR0915
 
         timeout = timeout_ms - (int(time.time() * 1000) - start)
 
-    raise exceptions.ScannerError(f"Timeout after {timeout_ms:d}ms")
+    msg = f"Timeout after {timeout_ms:d}ms"
+    raise exceptions.ScannerError(msg)
 
 
 if __name__ == "__main__":

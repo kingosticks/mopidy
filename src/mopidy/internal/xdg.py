@@ -12,19 +12,19 @@ def get_dirs() -> dict[str, pathlib.Path]:
     Additional keys, like ``XDG_MUSIC_DIR``, may be available if the
     ``$XDG_CONFIG_DIR/user-dirs.dirs`` file exists and is parseable.
 
-    See http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
+    See https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
     for the XDG Base Directory specification.
     """
 
     dirs = {
         "XDG_CACHE_DIR": pathlib.Path(
-            os.getenv("XDG_CACHE_HOME", "~/.cache")
+            os.getenv("XDG_CACHE_HOME", "~/.cache"),
         ).expanduser(),
         "XDG_CONFIG_DIR": pathlib.Path(
-            os.getenv("XDG_CONFIG_HOME", "~/.config")
+            os.getenv("XDG_CONFIG_HOME", "~/.config"),
         ).expanduser(),
         "XDG_DATA_DIR": pathlib.Path(
-            os.getenv("XDG_DATA_HOME", "~/.local/share")
+            os.getenv("XDG_DATA_HOME", "~/.local/share"),
         ).expanduser(),
     }
 

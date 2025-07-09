@@ -42,9 +42,8 @@ def config_override_type(value: str) -> tuple[str, str, str]:
         key, value = remainder.split("=", 1)
         return (section.strip(), key.strip(), value.strip())
     except ValueError as exc:
-        raise argparse.ArgumentTypeError(
-            f"{value} must have the format section/key=value"
-        ) from exc
+        msg = f"{value} must have the format section/key=value"
+        raise argparse.ArgumentTypeError(msg) from exc
 
 
 class _ParserError(Exception):
@@ -89,7 +88,7 @@ class _HelpAction(argparse.Action):
 class Command:
     """Command parser and runner for building trees of commands.
 
-    This class provides a wraper around :class:`argparse.ArgumentParser`
+    This class provides a wrapper around :class:`argparse.ArgumentParser`
     for handling this type of command line application in a better way than
     argparse's own sub-parser handling.
     """
@@ -121,6 +120,7 @@ class Command:
         """Add a child parser to consider using.
 
         :param name: name to use for the sub-command that is being added.
+        :param command: the command to add.
         """
         self._children[name] = command
 
@@ -199,7 +199,7 @@ class Command:
             result.append(formatter.format_help())
 
         for childname, child in self._children.items():
-            child._subhelp(" ".join((name, childname)), result)
+            child._subhelp(f"{name} {childname}", result)
 
     def parse(self, args: list[str], prog: str | None = None) -> argparse.Namespace:
         """Parse command line arguments.
@@ -251,7 +251,10 @@ class Command:
             self.exit(1, f"unrecognized command: {child}", usage)
 
         return self._children[child]._parse(
-            result._args, result, overrides, " ".join([prog, child])
+            result._args,
+            result,
+            overrides,
+            f"{prog} {child}",
         )
 
     def run(
@@ -289,7 +292,10 @@ class RootCommand(Command):
         super().__init__()
         self.set(base_verbosity_level=0)
         self.add_argument(
-            "-h", "--help", action="help", help="Show this message and exit"
+            "-h",
+            "--help",
+            action="help",
+            help="Show this message and exit",
         )
         self.add_argument(
             "--version",
@@ -318,7 +324,7 @@ class RootCommand(Command):
             dest="config_files",
             type=config_files_type,
             metavar="FILES",
-            help="config files to use, colon seperated, later files override",
+            help="config files to use, colon separated, later files override",
         )
         self.add_argument(
             "-o",
@@ -491,7 +497,10 @@ class RootCommand(Command):
         core = cast(
             CoreProxy,
             Core.start(
-                config=config, mixer=mixer, backends=backends, audio=audio
+                config=config,
+                mixer=mixer,
+                backends=backends,
+                audio=audio,
             ).proxy(),
         )
         call = ProxyCall(attr_path=("_setup",), args=(), kwargs={})

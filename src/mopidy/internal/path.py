@@ -17,10 +17,11 @@ XDG_DIRS = xdg.get_dirs()
 def get_or_create_dir(dir_path: str | PathLike[str]) -> pathlib.Path:
     dir_path = expand_path(dir_path)
     if dir_path.is_file():
-        raise OSError(
+        msg = (
             f"A file with the same name as the desired dir, "
             f"{dir_path!r}, already exists."
         )
+        raise OSError(msg)
     if not dir_path.is_dir():
         logger.info(f"Creating dir {dir_path.as_uri()}")
         dir_path.mkdir(mode=0o755, parents=True)
@@ -56,7 +57,7 @@ def get_unix_socket_path(socket_path: str) -> pathlib.Path | None:
     return pathlib.Path(match.group(1))
 
 
-def path_to_uri(path: str | PathLike[str]) -> str:
+def path_to_uri(path: str | PathLike[str]) -> Uri:
     """
     Convert OS specific path to file:// URI.
 
@@ -66,7 +67,7 @@ def path_to_uri(path: str | PathLike[str]) -> str:
 
     Returns a file:// URI as an unicode string.
     """
-    return pathlib.Path(path).as_uri()
+    return Uri(pathlib.Path(path).as_uri())
 
 
 def uri_to_path(uri: Uri | str) -> pathlib.Path:
@@ -86,7 +87,8 @@ def expand_path(path: bytes | str | PathLike[str]) -> pathlib.Path:
     for xdg_var, xdg_dir in XDG_DIRS.items():
         path = path.replace("$" + xdg_var, str(xdg_dir))
     if "$" in path:
-        raise ValueError(f"Unexpanded '$...' in path {path!r}")
+        msg = f"Unexpanded '$...' in path {path!r}"
+        raise ValueError(msg)
 
     return pathlib.Path(path).expanduser().resolve()
 
@@ -104,7 +106,7 @@ def is_path_inside_base_dir(
     base_path = pathlib.Path(base_path).resolve()  # pyright: ignore[reportArgumentType]
 
     if path.is_file():
-        # Use dir of file for prefix comparision, so we don't accept
+        # Use dir of file for prefix comparison, so we don't accept
         # /tmp/foo.m3u as being inside /tmp/foo, simply because they have a
         # common prefix, /tmp/foo, which matches the base path, /tmp/foo.
         path = path.parent

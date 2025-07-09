@@ -21,8 +21,8 @@ from mopidy.core.mixer import MixerController
 from mopidy.core.playback import PlaybackController
 from mopidy.core.playlists import PlaylistsController
 from mopidy.core.tracklist import TracklistController
-from mopidy.internal import path, storage, validation
-from mopidy.internal.models import CoreState
+from mopidy.internal import path, storage
+from mopidy.internal.models import CoreState, StoredState
 
 if TYPE_CHECKING:
     from mopidy.config import Config
@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from mopidy.core.playback import PlaybackControllerProxy
     from mopidy.core.playlists import PlaylistsControllerProxy
     from mopidy.core.tracklist import TracklistControllerProxy
+    from mopidy.mixer import MixerProxy
     from mopidy.types import Uri
 
 logger = logging.getLogger(__name__)
@@ -65,7 +66,7 @@ class Core(
         self,
         config: Config,
         *,
-        mixer: mixer.MixerProxy | None = None,
+        mixer: MixerProxy | None = None,
         backends: Iterable[backend.BackendProxy],
         audio: audio.AudioProxy | None = None,
     ) -> None:
@@ -76,15 +77,15 @@ class Core(
         self.backends = Backends(backends or [])
 
         self.library = pykka.traversable(
-            LibraryController(backends=self.backends, core=self)
+            LibraryController(backends=self.backends, core=self),
         )
         self.history = pykka.traversable(HistoryController())
         self.mixer = pykka.traversable(MixerController(mixer=mixer))
         self.playback = pykka.traversable(
-            PlaybackController(audio=audio, backends=self.backends, core=self)
+            PlaybackController(audio=audio, backends=self.backends, core=self),
         )
         self.playlists = pykka.traversable(
-            PlaylistsController(backends=self.backends, core=self)
+            PlaylistsController(backends=self.backends, core=self),
         )
         self.tracklist = pykka.traversable(TracklistController(core=self))
 
@@ -116,7 +117,7 @@ class Core(
         new_state: PlaybackState,
         target_state: PlaybackState | None,
     ) -> None:
-        # XXX: This is a temporary fix for issue #232 while we wait for a more
+        # NOTE: This is a temporary fix for issue #232 while we wait for a more
         # permanent solution with the implementation of issue #234. When the
         # Spotify play token is lost, the Spotify backend pauses audio
         # playback, but mopidy.core doesn't know this, so we need to update
@@ -181,7 +182,7 @@ class Core(
                 ]
             if len(coverage):
                 self._load_state(coverage)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning("Restore state: Unexpected error: %s", str(e))
 
     def _teardown(self) -> None:
@@ -193,7 +194,7 @@ class Core(
                 and self._config["core"]["restore_state"]
             ):
                 self._save_state()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning("Unexpected error while saving state: %s", str(e))
 
     def _get_data_dir(self) -> Path:
@@ -210,13 +211,14 @@ class Core(
         state_file = self._get_state_file()
         logger.info("Saving state to %s", state_file)
 
-        data = {}
-        data["version"] = mopidy.__version__
-        data["state"] = CoreState(
-            tracklist=self.tracklist._save_state(),
-            history=self.history._save_state(),
-            playback=self.playback._save_state(),
-            mixer=self.mixer._save_state(),
+        data = StoredState(
+            version=mopidy.__version__,
+            state=CoreState(
+                tracklist=self.tracklist._save_state(),
+                history=self.history._save_state(),
+                playback=self.playback._save_state(),
+                mixer=self.mixer._save_state(),
+            ),
         )
         storage.dump(state_file, data)
         logger.debug("Saving state done")
@@ -248,14 +250,12 @@ class Core(
         except OSError:
             logger.info("Failed to delete %s", state_file)
 
-        if "state" in data:
-            core_state = data["state"]
-            validation.check_instance(core_state, CoreState)
-            self.history._load_state(core_state.history, coverage)
-            self.tracklist._load_state(core_state.tracklist, coverage)
-            self.mixer._load_state(core_state.mixer, coverage)
+        if data is not None:
+            self.history._load_state(data.state.history, coverage)
+            self.tracklist._load_state(data.state.tracklist, coverage)
+            self.mixer._load_state(data.state.mixer, coverage)
             # playback after tracklist
-            self.playback._load_state(core_state.playback, coverage)
+            self.playback._load_state(data.state.playback, coverage)
         logger.debug("Loading state done")
 
 
@@ -286,10 +286,11 @@ class Backends(list):
 
             for scheme in b.uri_schemes.get():
                 if scheme in backends_by_scheme:
-                    raise AssertionError(
+                    msg = (
                         f"Cannot add URI scheme {scheme!r} for {name(b)}, "
                         f"it is already handled by {name(backends_by_scheme[scheme])}"
                     )
+                    raise AssertionError(msg)
                 backends_by_scheme[scheme] = b
 
                 if has_library:

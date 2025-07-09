@@ -230,7 +230,7 @@ To learn more, see the `tox documentation <https://tox.readthedocs.io/>`_ .
 
 Before submitting a pull request, we recommend running::
 
-    tox -e ci
+    tox
 
 This will locally run similar tests to what we use in our CI runs and help us to
 merge high-quality contributions.
@@ -264,9 +264,9 @@ tests. This makes for a very quick code-test cycle::
     pytest -f    # or --looponfail
 
 With the help of the pytest-cov plugin, we can get a report on what parts of
-the given module, ``mopidy`` in this example, are covered by the test suite::
+the given module are covered by the test suite::
 
-    pytest --cov=mopidy --cov-report=term-missing
+    pytest --cov
 
 .. note::
 
@@ -415,7 +415,7 @@ through :mod:`importlib`::
 
 Every extension will have a ``README.rst`` file. It may contain information
 about extra dependencies required, development process, etc. Extensions usually
-have a changelog in their GitHub relases page.
+have a changelog in their GitHub releases page.
 
 
 Upgrading extensions

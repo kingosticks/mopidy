@@ -12,6 +12,7 @@ from mopidy.core import listener
 from mopidy.internal import deprecation, validation
 from mopidy.internal.models import TracklistState
 from mopidy.models import TlTrack, Track
+from mopidy.types import TracklistId
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 class TracklistController:
     def __init__(self, core: Core) -> None:
         self.core = core
-        self._next_tlid: int = 1
+        self._next_tlid: TracklistId = TracklistId(1)
         self._tl_tracks: list[TlTrack] = []
         self._version: int = 0
 
@@ -370,7 +371,8 @@ class TracklistController:
             The ``tracks`` argument. Use ``uris``.
         """
         if sum(o is not None for o in [tracks, uris]) != 1:
-            raise ValueError('Exactly one of "tracks" or "uris" must be set')
+            msg = 'Exactly one of "tracks" or "uris" must be set'
+            raise ValueError(msg)
 
         if tracks is not None:
             validation.check_instances(tracks, Track)
@@ -393,12 +395,11 @@ class TracklistController:
 
         for track in tracks:
             if self.get_length() >= max_length:
-                raise exceptions.TracklistFull(
-                    f"Tracklist may contain at most {max_length:d} tracks."
-                )
+                msg = f"Tracklist may contain at most {max_length:d} tracks."
+                raise exceptions.TracklistFull(msg)
 
             tl_track = TlTrack(self._next_tlid, track)
-            self._next_tlid += 1
+            self._next_tlid = TracklistId(self._next_tlid + 1)
             if at_position is not None:
                 self._tl_tracks.insert(at_position, tl_track)
                 at_position += 1
@@ -469,15 +470,20 @@ class TracklistController:
 
         # TODO: use validation helpers?
         if start >= end:
-            raise AssertionError("start must be smaller than end")
+            msg = "start must be smaller than end"
+            raise AssertionError(msg)
         if start < 0:
-            raise AssertionError("start must be at least zero")
+            msg = "start must be at least zero"
+            raise AssertionError(msg)
         if end > len(tl_tracks):
-            raise AssertionError("end can not be larger than tracklist length")
+            msg = "end can not be larger than tracklist length"
+            raise AssertionError(msg)
         if to_position < 0:
-            raise AssertionError("to_position must be at least zero")
+            msg = "to_position must be at least zero"
+            raise AssertionError(msg)
         if to_position > len(tl_tracks):
-            raise AssertionError("to_position can not be larger than tracklist length")
+            msg = "to_position can not be larger than tracklist length"
+            raise AssertionError(msg)
 
         new_tl_tracks = tl_tracks[:start] + tl_tracks[end:]
         for tl_track in tl_tracks[start:end]:
@@ -515,15 +521,18 @@ class TracklistController:
         """
         tl_tracks = self._tl_tracks
 
-        # TOOD: use validation helpers?
+        # TODO: use validation helpers?
         if start is not None and end is not None and start >= end:
-            raise AssertionError("start must be smaller than end")
+            msg = "start must be smaller than end"
+            raise AssertionError(msg)
 
         if start is not None and start < 0:
-            raise AssertionError("start must be at least zero")
+            msg = "start must be at least zero"
+            raise AssertionError(msg)
 
         if end is not None and end > len(tl_tracks):
-            raise AssertionError("end can not be larger than tracklist length")
+            msg = "end can not be larger than tracklist length"
+            raise AssertionError(msg)
 
         before = tl_tracks[: start or 0]
         shuffled = tl_tracks[start:end]
@@ -581,7 +590,7 @@ class TracklistController:
 
     def _save_state(self) -> TracklistState:
         return TracklistState(
-            tl_tracks=self._tl_tracks,
+            tl_tracks=tuple(self._tl_tracks),
             next_tlid=self._next_tlid,
             consume=self.get_consume(),
             random=self.get_random(),
@@ -601,7 +610,7 @@ class TracklistController:
                 self.set_repeat(state.repeat)
                 self.set_single(state.single)
             if "tracklist" in coverage:
-                self._next_tlid = max(state.next_tlid, self._next_tlid)
+                self._next_tlid = max(TracklistId(state.next_tlid), self._next_tlid)
                 self._tl_tracks = list(state.tl_tracks)
                 self._increase_version()
 

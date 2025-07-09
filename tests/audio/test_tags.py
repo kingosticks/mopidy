@@ -112,25 +112,31 @@ class TagsToTrackTest(unittest.TestCase):
             "container-format": ["ID3 tag"],
             "genre": ["genre"],
             "comment": ["comment"],
-            "musicbrainz-trackid": ["trackid"],
-            "musicbrainz-albumid": ["albumid"],
-            "musicbrainz-artistid": ["artistid"],
+            "musicbrainz-trackid": ["a69ac038-02cc-4b2c-8bd2-9ac386faec19"],
+            "musicbrainz-albumid": ["00bf7c38-ee81-4efc-9ae7-0e948634143e"],
+            "musicbrainz-artistid": ["8760c5ac-ebcb-469f-b01d-ab7c8962ba95"],
             "musicbrainz-sortname": ["sortname"],
-            "musicbrainz-albumartistid": ["albumartistid"],
+            "musicbrainz-albumartistid": ["c1ad4664-81c9-4ea5-b98d-f08ed7362696"],
             "bitrate": [1000],
         }
 
-        artist = Artist(name="artist", musicbrainz_id="artistid", sortname="sortname")
+        artist = Artist(
+            name="artist",
+            musicbrainz_id="8760c5ac-ebcb-469f-b01d-ab7c8962ba95",
+            sortname="sortname",
+        )
         composer = Artist(name="composer")
         performer = Artist(name="performer")
-        albumartist = Artist(name="albumartist", musicbrainz_id="albumartistid")
+        albumartist = Artist(
+            name="albumartist", musicbrainz_id="c1ad4664-81c9-4ea5-b98d-f08ed7362696"
+        )
 
         album = Album(
             name="album",
             date="2006-01-01",
             num_tracks=2,
             num_discs=3,
-            musicbrainz_id="albumid",
+            musicbrainz_id="00bf7c38-ee81-4efc-9ae7-0e948634143e",
             artists=[albumartist],
         )
 
@@ -141,7 +147,7 @@ class TagsToTrackTest(unittest.TestCase):
             track_no=1,
             disc_no=2,
             comment="comment",
-            musicbrainz_id="trackid",
+            musicbrainz_id="a69ac038-02cc-4b2c-8bd2-9ac386faec19",
             album=album,
             bitrate=1000,
             artists=[artist],
@@ -207,7 +213,7 @@ class TagsToTrackTest(unittest.TestCase):
     def test_missing_track_date(self):
         del self.tags["date"]
         self.check(
-            self.track.replace(album=self.track.album.replace(date=None), date=None)
+            self.track.replace(album=self.track.album.replace(date=None), date=None),
         )
 
     def test_multiple_track_date(self):
@@ -229,7 +235,7 @@ class TagsToTrackTest(unittest.TestCase):
 
     def test_missing_track_artist_name(self):
         del self.tags["artist"]
-        self.check(self.track.replace(artists=[]))
+        self.check(self.track.replace(artists=frozenset()))
 
     def test_multiple_track_artist_name(self):
         self.tags["artist"] = ["name1", "name2"]
@@ -247,7 +253,7 @@ class TagsToTrackTest(unittest.TestCase):
 
     def test_missing_track_composer_name(self):
         del self.tags["composer"]
-        self.check(self.track.replace(composers=[]))
+        self.check(self.track.replace(composers=frozenset()))
 
     def test_multiple_track_composer_name(self):
         self.tags["composer"] = ["composer1", "composer2"]
@@ -256,7 +262,7 @@ class TagsToTrackTest(unittest.TestCase):
 
     def test_missing_track_performer_name(self):
         del self.tags["performer"]
-        self.check(self.track.replace(performers=[]))
+        self.check(self.track.replace(performers=frozenset()))
 
     def test_multiple_track_performe_name(self):
         self.tags["performer"] = ["performer1", "performer2"]
@@ -300,7 +306,7 @@ class TagsToTrackTest(unittest.TestCase):
 
     def test_missing_album_artist_name(self):
         del self.tags["album-artist"]
-        album = self.track.album.replace(artists=[])
+        album = self.track.album.replace(artists=frozenset())
         self.check(self.track.replace(album=album))
 
     def test_multiple_album_artist_name(self):
@@ -356,11 +362,15 @@ class TagsToTrackTest(unittest.TestCase):
         artist = Artist(
             name="artist",
             sortname="another_sortname",
-            musicbrainz_id="artistid",
+            musicbrainz_id="8760c5ac-ebcb-469f-b01d-ab7c8962ba95",
         )
         self.check(self.track.replace(artists=[artist]))
 
     def test_missing_sortname(self):
         del self.tags["musicbrainz-sortname"]
-        artist = Artist(name="artist", sortname=None, musicbrainz_id="artistid")
+        artist = Artist(
+            name="artist",
+            sortname=None,
+            musicbrainz_id="8760c5ac-ebcb-469f-b01d-ab7c8962ba95",
+        )
         self.check(self.track.replace(artists=[artist]))

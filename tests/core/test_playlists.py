@@ -73,7 +73,7 @@ class PlaylistTest(BasePlaylistsTest):
         assert self.plr1b in result
 
     def test_get_items_selects_the_matching_backend(self):
-        ref = Ref.track()
+        ref = Ref.track(uri="uri", name="Foo")
         self.sp2.get_items.return_value.get.return_value = [ref]
 
         result = self.core.playlists.get_items("dummy2:pl:a")
@@ -278,17 +278,17 @@ class MockBackendCorePlaylistsBase(unittest.TestCase):
 class AsListBadBackendsTest(MockBackendCorePlaylistsBase):
     def test_backend_raises_exception(self, logger):
         self.playlists.as_list.return_value.get.side_effect = Exception
-        assert [] == self.core.playlists.as_list()
+        assert self.core.playlists.as_list() == []
         logger.exception.assert_called_with(mock.ANY, "DummyBackend")
 
     def test_backend_returns_none(self, logger):
         self.playlists.as_list.return_value.get.return_value = None
-        assert [] == self.core.playlists.as_list()
+        assert self.core.playlists.as_list() == []
         assert not logger.error.called
 
     def test_backend_returns_wrong_type(self, logger):
         self.playlists.as_list.return_value.get.return_value = "abc"
-        assert [] == self.core.playlists.as_list()
+        assert self.core.playlists.as_list() == []
         logger.error.assert_called_with(mock.ANY, "DummyBackend", mock.ANY)
 
 

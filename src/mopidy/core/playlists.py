@@ -133,6 +133,7 @@ class PlaylistsController:
         :param uri_scheme: use the backend matching the URI scheme
         """
         if uri_scheme in self.backends.with_playlists:
+            assert uri_scheme is not None
             backends = [self.backends.with_playlists[uri_scheme]]
         else:
             backends = self.backends.with_playlists.values()
@@ -238,7 +239,7 @@ class PlaylistsController:
         """Save the playlist.
 
         For a playlist to be saveable, it must have the ``uri`` attribute set.
-        You must not set the ``uri`` atribute yourself, but use playlist
+        You must not set the ``uri`` attribute yourself, but use playlist
         objects returned by :meth:`create` or retrieved from :attr:`playlists`,
         which will always give you saveable playlists.
 
